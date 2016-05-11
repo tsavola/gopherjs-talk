@@ -1,0 +1,182 @@
+GopherJS
+at Helsinki Gophers meetup
+11 May 2016
+
+Timo Savola
+CTO, Ninchat
+timo@ninchat.com
+https://ninchat.com/
+@timosavola
+
+* Go & Me
+
+- 2009: Go is released
+- 2009 or 2010: "7.5% time" project at Sulake using Go
+- 2010: First (and only) contribution to Go
+- 2011: IRC-Galleria uses Go in production
+- 2011: Early Ninchat prototype in pure Go
+- 2012: Ninchat uses Go among other languages
+- 2014: Ninchat uses GopherJS
+
+* GopherJS
+
+- A compiler from Go to JavaScript
+- Supports browsers and Node.js
+- Started in 2013
+- By Richard Musiol
+
+	go get github.com/gopherjs/gopherjs
+	gopherjs build
+
+* Standard packages
+
+Fully supported: 110
+
+Partially supported: 12
+
+- `net/http`
+- `os` and `syscall` supported on Node.js
+
+Not supported: 21
+
+- `unsafe`
+
+* Goroutines are supported
+
+- Local variables are stored in closures
+- When a something blocks, the call stack is unwound
+- When a goroutine is resumed, its call stack and closures are restored
+
+* Access the JavaScript world
+
+.code dom/dom.go
+
+* Export objects to the JavaScript world, part 1
+
+.code export/main.go
+
+`>`MyStuff.myApplyFunc(someUnaryFunction,`"asdf")`
+
+* Export objects to the JavaScript world, part 2
+
+.code export/objectvalue.go
+
+`>`t`=`examples.NewValueThing()`
+`>`t`
+`Object`{Foo:`0,`Bar:`"",`Baz:`Array[0]}`
+`>`t.GetSomething()`
+_Uncaught_TypeError:_t.GetSomething_is_not_a_function_
+
+* Export objects to the JavaScript world, part 3
+
+.code export/activeobject.go
+
+`>`t`=`examples.NewActiveThing()`
+`>`t`
+`Object`{internal`stuff`only}`
+`>`t.GetSomething()`
+`42`
+
+* Goroutine gotcha
+
+Doesn't work:
+
+.code goroutine/bad.go
+
+Works:
+
+.code goroutine/good.go
+
+* GOARCH is "js"
+
+.caption `mycode_js.go`
+
+	// +build js
+
+	import "github.com/gopherjs/gopherjs/js"
+
+	func Display(message string) {
+		js.Global.Get("console").Call("log", message)
+	}
+
+.caption `mycode_default.go`
+
+	// +build !js
+
+	import "fmt"
+	import "os"
+
+	func Display(message string) {
+		fmt.Fprintln(os.Stderr, message)
+	}
+
+* File sizes
+
+Empty main function:
+
+- 50 KB minified
+- 12 KB minified and gzipped
+
+Import the `sort` package:
+
+- 51 KB minified
+- 12 KB minified and gzipped
+
+Import the `fmt` package:
+
+- 392 KB
+- 77 KB gzipped
+
+* NinchatClient
+
+- Low-level API client implemented in GopherJS
+- Robust I/O state machine thanks to goroutines
+- Avoid bloat by using the browser's APIs directly
+- Supports IE8+ with shims (and stubs for typed array types)
+- Same code base supports also native Go
+- `https://github.com/ninchat/ninchat-go` is an importable Go package
+- `https://github.com/ninchat/ninchat-js` is the main package
+
+* NinchatClient cont'd
+
+Code base:
+
+- 65% common code
+- 22% GopherJS wrapper code
+- 13% native Go wrapper code (for custom abstractions)
+
+File size:
+
+- 157 KB minified
+- 30 KB minified and gzipped
+
+Estimated file size without direct browser API calls:
+
+- 3 MB minified
+- 600 KB minified and gzipped
+
+* Performance
+
+Ninchat profiling:
+
+- Object conversion between JS and Go worlds takes time
+- UI framework etc. take up most of the time anyway
+
+Internet says:
+
+- _"Performance_is_quite_good_in_most_cases"_
+- Microbenchmarks may be 1000x slower than native Go
+- ...or they may be faster, thanks to V8
+
+* Debugging
+
+- Supports source maps
+
+.image sourcemap.png
+
+* Conclusion
+
+- Don't use anything that imports the `fmt` package (etc.) if file size matters
+- Mapping complicated Go APIs to JavaScript is complicated
+- As for running Go code in the browser: it just works!
+- Goroutines, channels and static typing bring their benefits if a reasonably self-contained part of your application is implemented in Go
